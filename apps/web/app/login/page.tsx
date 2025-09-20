@@ -57,8 +57,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen !bg-gray-900 flex items-center justify-center p-4 relative overflow-hidden" style={{ backgroundColor: '#111827' }}>
-
-
       <div className="relative w-full max-w-md z-10">
         {/* Brand Section */}
         <div className="text-center mb-10">
