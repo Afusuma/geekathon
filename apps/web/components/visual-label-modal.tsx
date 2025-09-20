@@ -54,8 +54,9 @@ export function VisualLabelModal({ isOpen, onClose, labelData }: VisualLabelModa
     
     try {
       if (exportFormat === 'png') {
-        // Gerar PNG via Python service
-        const response = await fetch('http://localhost:5002/generate-label', {
+        // Gerar PNG via unified API service
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
+        const response = await fetch(`${apiUrl}/nutrition/visual`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

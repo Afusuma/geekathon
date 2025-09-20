@@ -547,7 +547,7 @@ function generateMockLabel(productData: any): Label {
   
   return {
     id: labelId,
-    productName: productData.name || 'Test Product',
+    productName: productData.productName || productData.name || 'Test Product',
     ingredients: translatedIngredients,
     allergens: productData.allergens || [],
     nutritionalInfo: productData.nutritionalInfo || {
@@ -612,7 +612,7 @@ export const handler = async (
     }
 
     // Basic validation
-    if (!productData.name || !productData.ingredients) {
+    if ((!productData.productName && !productData.name) || !productData.ingredients) {
       return createResponse(400, {
         error: 'VALIDATION_ERROR',
         message: 'Product name and ingredients are required',

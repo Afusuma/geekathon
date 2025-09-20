@@ -1,0 +1,11 @@
+{
+  "name": "@smartlabel/lambda-layer",
+  "version": "1.0.0",
+  "description": "Shared Node.js dependencies for Lambda functions",
+  "private": true,
+  "dependencies": {
+    "aws-sdk": "^2.1450.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
+  }
+}

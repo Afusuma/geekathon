@@ -130,7 +130,8 @@ export function VisualLabelDisplay({ labelData }: VisualLabelDisplayProps) {
     setGeneratedImage(null);
 
     try {
-      const response = await fetch('http://localhost:5002/generate-label', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
+      const response = await fetch(`${apiUrl}/nutrition/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,0 +1,247 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - feat/aws-unified-deployment
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '20.x'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  test:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.0.0
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint code
+        run: pnpm lint
+
+      - name: Run type checking
+        run: pnpm check-types
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test --if-present
+
+  deploy-backend:
+    name: Deploy Backend to AWS
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.0.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install SAM CLI
+        run: |
+          pip install aws-sam-cli
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build TypeScript functions
+        run: |
+          cd apps/api
+          pnpm build
+          cd ../..
+
+      - name: Build and push Docker images
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd apps/api/src/python/nutrition
+          docker build -t $ECR_REGISTRY/smartlabel-nutrition:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/smartlabel-nutrition:latest .
+          docker push $ECR_REGISTRY/smartlabel-nutrition:$IMAGE_TAG
+          docker push $ECR_REGISTRY/smartlabel-nutrition:latest
+          cd ../../../../..
+
+      - name: Prepare Lambda layers
+        run: |
+          # Python layer
+          cd apps/api/layers/python
+          pip install -r requirements.txt -t python/lib/python3.11/site-packages/ --platform manylinux2014_x86_64 --only-binary=:all:
+          cd ../../../..
+
+          # Node.js layer
+          cd apps/api/layers/nodejs
+          npm install --production
+          cd ../../../..
+
+      - name: Deploy with SAM
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+        run: |
+          cd apps/api
+          sam build --template-file template-unified.yaml --use-container
+
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name smartlabel-api-${ENVIRONMENT} \
+            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+            --parameter-overrides Environment=${ENVIRONMENT} \
+            --region ${{ env.AWS_REGION }} \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      - name: Get API URL
+        id: get-api-url
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name smartlabel-api-${ENVIRONMENT} \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiGatewayUrl'].OutputValue" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "api_url=${API_URL}" >> $GITHUB_OUTPUT
+
+      - name: Test deployment
+        run: |
+          curl -f ${{ steps.get-api-url.outputs.api_url }}/hello || exit 1
+          curl -f ${{ steps.get-api-url.outputs.api_url }}/nutrition/health || exit 1
+
+  deploy-frontend:
+    name: Deploy Frontend to Amplify
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.0.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get API URL
+        id: get-api-url
+        env:
+          ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name smartlabel-api-${ENVIRONMENT} \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiGatewayUrl'].OutputValue" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "api_url=${API_URL}" >> $GITHUB_OUTPUT
+
+      - name: Build frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ steps.get-api-url.outputs.api_url }}
+        run: |
+          pnpm install
+          cd apps/web
+          echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" > .env.production
+          pnpm build
+
+      - name: Deploy to Amplify
+        if: env.AMPLIFY_APP_ID != ''
+        env:
+          AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
+          BRANCH_NAME: ${{ github.ref == 'refs/heads/main' && 'main' || 'staging' }}
+        run: |
+          aws amplify start-deployment \
+            --app-id ${AMPLIFY_APP_ID} \
+            --branch-name ${BRANCH_NAME} \
+            --source-url ${{ github.server_url }}/${{ github.repository }}/archive/${{ github.sha }}.zip
+
+  notify:
+    name: Notify Deployment Status
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send notification
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment Status: ${{ job.status }}
+            Environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -13,6 +13,7 @@ smartlabel-ai/
 ├── apps/
 │   ├── web/                 # Next.js frontend (port 3000)
 │   └── api/                 # AWS Lambda backend (port 3001)
+│       └── src/python/      # Python services for AI processing (port 5001)
 ├── packages/
 │   ├── shared/              # Shared TypeScript types and schemas
 │   ├── ui/                  # Shared React components
@@ -68,13 +69,26 @@ pnpm --filter=@repo/api dev:sam
 
 # Deploy to AWS
 pnpm --filter=@repo/api deploy
+
+# Watch mode for TypeScript compilation
+pnpm --filter=@repo/api dev:watch
+```
+
+### Python Services
+```bash
+# Run nutrition label service locally (Python server on port 5001)
+cd apps/api/src/python/nutrition && python local_server.py
+
+# Alternative: Start Python service through API dev
+pnpm --filter=@repo/api dev  # This will also handle Python services
 ```
 
 ## Key Technologies
 
 - **Monorepo**: Turborepo with pnpm workspaces
 - **Frontend**: Next.js 15 with React 19, TanStack Query, Tailwind CSS
-- **Backend**: AWS Lambda with TypeScript, Express dev server
+- **Backend**: AWS Lambda with TypeScript, Express dev server, Python services
+- **AI Engine**: AWS Bedrock for nutrition label generation, Python-based processing
 - **Shared**: TypeScript types built with tsup for dual CJS/ESM output
 - **Infrastructure**: AWS SAM for serverless deployment
 
@@ -84,7 +98,8 @@ pnpm --filter=@repo/api deploy
 2. **Hot Reloading**: Both frontend and backend support hot reloading during development
 3. **Type Safety**: Changes to shared types automatically propagate to both apps
 4. **Testing**: API endpoint testing available at http://localhost:3001/hello
-5. **Steel Thread**: End-to-end connectivity proven - frontend can successfully call backend APIs
+5. **Python Services**: AI nutrition services available at http://localhost:5001 (when running)
+6. **Steel Thread**: End-to-end connectivity proven - frontend can successfully call backend APIs
 
 ## Important Files
 
@@ -92,6 +107,7 @@ pnpm --filter=@repo/api deploy
 - `pnpm-workspace.yaml` - Workspace package definitions
 - `apps/web/app/page.tsx` - Main frontend page with API integration example
 - `apps/api/src/handlers/hello.ts` - Lambda function handlers
+- `apps/api/src/python/nutrition/` - Python AI services for nutrition label generation
 - `apps/api/template.yaml` - SAM template for AWS deployment
 - `packages/shared/src/types.ts` - Shared TypeScript interfaces
 

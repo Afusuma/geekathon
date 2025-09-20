@@ -1,0 +1,465 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SmartLabel AI Unified API - Production Ready
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Tracing: Active
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        LABELS_TABLE: !Ref LabelsTable
+        CRISIS_LOGS_TABLE: !Ref CrisisLogsTable
+        LABELS_BUCKET: !Ref LabelsBucket
+        BEDROCK_REGION: !Ref AWS::Region
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+      MaxAge: "'86400'"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment
+
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-5-sonnet-20241022-v2:0
+    Description: AWS Bedrock model ID for AI operations
+
+Resources:
+
+  # ============================================
+  # API Gateway
+  # ============================================
+  SmartLabelApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'SmartLabel-API-${Environment}'
+      StageName: !Ref Environment
+      TracingEnabled: true
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: true
+          ThrottlingRateLimit: 100
+          ThrottlingBurstLimit: 200
+
+  # ============================================
+  # DynamoDB Tables
+  # ============================================
+  LabelsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'SmartLabel-Labels-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: labelId
+          AttributeType: S
+        - AttributeName: productId
+          AttributeType: S
+        - AttributeName: market
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: labelId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ProductMarketIndex
+          KeySchema:
+            - AttributeName: productId
+              KeyType: HASH
+            - AttributeName: market
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: MarketCreatedIndex
+          KeySchema:
+            - AttributeName: market
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+  CrisisLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'SmartLabel-CrisisLogs-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: crisisId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: severity
+          AttributeType: S
+      KeySchema:
+        - AttributeName: crisisId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: SeverityTimestampIndex
+          KeySchema:
+            - AttributeName: severity
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # ============================================
+  # S3 Buckets
+  # ============================================
+  LabelsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'smartlabel-labels-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+
+  # ============================================
+  # Lambda Layers
+  # ============================================
+  PythonDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub 'SmartLabel-PythonDeps-${Environment}'
+      Description: Python dependencies for nutrition label functions
+      ContentUri: layers/python/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.11
+
+  NodeDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub 'SmartLabel-NodeDeps-${Environment}'
+      Description: Node.js dependencies for TypeScript functions
+      ContentUri: layers/nodejs/
+      CompatibleRuntimes:
+        - nodejs20.x
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  # ============================================
+  # TypeScript Lambda Functions
+  # ============================================
+  HelloFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'SmartLabel-Hello-${Environment}'
+      CodeUri: dist/
+      Handler: handlers/hello.handler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Layers:
+        - !Ref NodeDependenciesLayer
+      Events:
+        HelloApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /hello
+            Method: GET
+
+  LabelsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'SmartLabel-Labels-${Environment}'
+      CodeUri: dist/
+      Handler: handlers/labels.handler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Layers:
+        - !Ref NodeDependenciesLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LabelsTable
+      Events:
+        GetLabels:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /labels
+            Method: GET
+        CreateLabel:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /labels
+            Method: POST
+        GetLabelById:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /labels/{id}
+            Method: GET
+        DeleteLabel:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /labels/{id}
+            Method: DELETE
+
+  GenerateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'SmartLabel-Generate-${Environment}'
+      CodeUri: dist/
+      Handler: handlers/generate.handler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Layers:
+        - !Ref NodeDependenciesLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LabelsTable
+        - Statement:
+          - Sid: BedrockInvokeModel
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: '*'
+      Events:
+        GenerateLabel:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /generate
+            Method: POST
+
+  # ============================================
+  # Python Lambda Functions (Container-based)
+  # ============================================
+  NutritionGenerateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'SmartLabel-NutritionGenerate-${Environment}'
+      PackageType: Image
+      ImageConfig:
+        Command: ["handler.generate_label_handler"]
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LabelsTable
+        - S3CrudPolicy:
+            BucketName: !Ref LabelsBucket
+        - Statement:
+          - Sid: BedrockInvokeModel
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: '*'
+      Events:
+        GenerateNutritionLabel:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /nutrition/generate
+            Method: POST
+    Metadata:
+      DockerTag: nutrition-generate
+      DockerContext: ./src/python/nutrition
+      Dockerfile: Dockerfile
+
+  NutritionCrisisFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'SmartLabel-NutritionCrisis-${Environment}'
+      PackageType: Image
+      ImageConfig:
+        Command: ["handler.crisis_response_handler"]
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CrisisLogsTable
+        - Statement:
+          - Sid: BedrockInvokeModel
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: '*'
+      Events:
+        CrisisResponse:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /nutrition/crisis-response
+            Method: POST
+    Metadata:
+      DockerTag: nutrition-crisis
+      DockerContext: ./src/python/nutrition
+      Dockerfile: Dockerfile
+
+  NutritionVisualFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'SmartLabel-NutritionVisual-${Environment}'
+      PackageType: Image
+      ImageConfig:
+        Command: ["handler.visual_label_handler"]
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref LabelsBucket
+      Events:
+        VisualLabel:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /nutrition/visual
+            Method: POST
+    Metadata:
+      DockerTag: nutrition-visual
+      DockerContext: ./src/python/nutrition
+      Dockerfile: Dockerfile
+
+  NutritionHealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'SmartLabel-NutritionHealth-${Environment}'
+      PackageType: Image
+      ImageConfig:
+        Command: ["handler.health_check_handler"]
+      Events:
+        HealthCheck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartLabelApi
+            Path: /nutrition/health
+            Method: GET
+    Metadata:
+      DockerTag: nutrition-health
+      DockerContext: ./src/python/nutrition
+      Dockerfile: Dockerfile
+
+  # ============================================
+  # CloudWatch Alarms
+  # ============================================
+  ApiGateway4xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'SmartLabel-API-4xx-${Environment}'
+      AlarmDescription: Alert on high 4xx error rate
+      MetricName: 4XXError
+      Namespace: AWS/ApiGateway
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub 'SmartLabel-API-${Environment}'
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 0.05
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  ApiGateway5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'SmartLabel-API-5xx-${Environment}'
+      AlarmDescription: Alert on 5xx errors
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub 'SmartLabel-API-${Environment}'
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  # ============================================
+  # Outputs
+  # ============================================
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${SmartLabelApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+
+  LabelsTableName:
+    Description: DynamoDB Labels table name
+    Value: !Ref LabelsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-LabelsTable'
+
+  CrisisLogsTableName:
+    Description: DynamoDB Crisis Logs table name
+    Value: !Ref CrisisLogsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-CrisisLogsTable'
+
+  LabelsBucketName:
+    Description: S3 bucket for label storage
+    Value: !Ref LabelsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-LabelsBucket'
+
+  ApiGatewayRestApiId:
+    Description: API Gateway REST API ID
+    Value: !Ref SmartLabelApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiId'
+
+  ApiGatewayStage:
+    Description: API Gateway deployment stage
+    Value: !Ref Environment
+    Export:
+      Name: !Sub '${AWS::StackName}-Stage'
