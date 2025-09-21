@@ -3,23 +3,25 @@
 import { useState } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import { MARKET_CONFIG } from '@/lib/market-config';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Download, 
-  Share2, 
-  Eye, 
-  EyeOff, 
-  RotateCcw, 
-  CheckCircle, 
-  AlertTriangle, 
-  Info,
+import {
+  Download,
+  Share2,
+  Eye,
+  EyeOff,
+  RotateCcw,
+  CheckCircle,
+  AlertTriangle,
   Globe,
   Shield,
   FileText,
-  Languages
+  Languages,
+  LayoutGrid,
+  Columns2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // import type { Label } from '@repo/shared';
@@ -33,9 +35,19 @@ export function EnhancedComparisonLayout({ onGenerateNew }: EnhancedComparisonLa
   const selectedMarkets = useAppStore(state => state.selectedMarkets);
   const primaryMarket = useAppStore(state => state.primaryMarket);
   const comparisonMode = useAppStore(state => state.comparisonMode);
-  const [viewMode, setViewMode] = useState<'grid' | 'side-by-side'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'side-by-side' | 'masonry'>('grid');
   const [expandedLabel, setExpandedLabel] = useState<string | null>(null);
   const [showComplianceDetails, setShowComplianceDetails] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Smooth view transitions
+  const handleViewModeChange = (mode: 'grid' | 'side-by-side' | 'masonry') => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setViewMode(mode);
+      setIsTransitioning(false);
+    }, 150);
+  };
 
   if (labels.length === 0) {
     return (
@@ -90,13 +102,14 @@ export function EnhancedComparisonLayout({ onGenerateNew }: EnhancedComparisonLa
     return (
       <motion.div
         layout
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ duration: 0.3 }}
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: -20 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
       >
-        <Card className={`bg-gray-800 border-gray-700 text-white transition-all duration-200 hover:border-gray-600 ${
-          isPrimary ? 'ring-2 ring-blue-400' : ''
+        <Card className={`bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm border-gray-700/50 text-white transition-all duration-200 hover:border-gray-600/50 hover:shadow-lg hover:shadow-blue-500/10 ${
+          isPrimary ? 'ring-2 ring-blue-400/50' : ''
         }`}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
@@ -283,14 +296,33 @@ export function EnhancedComparisonLayout({ onGenerateNew }: EnhancedComparisonLa
             {showComplianceDetails ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
             {showComplianceDetails ? 'Hide' : 'Show'} Details
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setViewMode(viewMode === 'grid' ? 'side-by-side' : 'grid')}
-            className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            {viewMode === 'grid' ? 'Side-by-Side' : 'Grid'} View
-          </Button>
+          {/* Enhanced View Mode Selector */}
+          <div className="flex bg-gray-700/50 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => handleViewModeChange('grid')}
+              className="h-8 px-3"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'side-by-side' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => handleViewModeChange('side-by-side')}
+              className="h-8 px-3"
+            >
+              <Columns2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'masonry' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => handleViewModeChange('masonry')}
+              className="h-8 px-3"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
+          </div>
           <Button onClick={onGenerateNew} className="bg-blue-600 hover:bg-blue-700">
             Generate New Labels
           </Button>
@@ -322,28 +354,52 @@ export function EnhancedComparisonLayout({ onGenerateNew }: EnhancedComparisonLa
           ))}
         </Tabs>
       ) : (
-        /* Grid View */
-        <div className={`grid gap-6 ${
-          viewMode === 'side-by-side' && labels.length <= 2 
-            ? 'grid-cols-1 lg:grid-cols-2' 
-            : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
-        }`}>
-          <AnimatePresence>
+        /* Enhanced Grid View with better responsive layout */
+        <motion.div
+          layout
+          className={cn(
+            'grid gap-6 transition-all duration-300',
+            isTransitioning && 'opacity-50',
+            viewMode === 'side-by-side' && labels.length <= 2
+              ? 'grid-cols-1 lg:grid-cols-2'
+              : viewMode === 'masonry'
+              ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+          )}
+        >
+          <AnimatePresence mode="popLayout">
             {labels.map((label, index) => (
-              <LabelCard 
-                key={label.labelId || index} 
-                label={label} 
-                index={index}
-                isPrimary={primaryMarket === label.market}
-              />
+              <motion.div
+                key={label.labelId || index}
+                layout
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                transition={{
+                  duration: 0.3,
+                  delay: index * 0.1,
+                  ease: 'easeOut'
+                }}
+              >
+                <LabelCard
+                  label={label}
+                  index={index}
+                  isPrimary={primaryMarket === label.market}
+                />
+              </motion.div>
             ))}
           </AnimatePresence>
-        </div>
+        </motion.div>
       )}
 
-      {/* Summary Stats */}
-      <Card className="bg-gray-800 border-gray-700 text-white">
-        <CardContent className="pt-6">
+      {/* Enhanced Summary Stats with animations */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.3 }}
+      >
+        <Card className="bg-gradient-to-r from-gray-800/90 to-gray-700/90 backdrop-blur-sm border-gray-700/50 text-white">
+          <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-400">{labels.length}</div>
@@ -366,8 +422,9 @@ export function EnhancedComparisonLayout({ onGenerateNew }: EnhancedComparisonLa
               <div className="text-sm text-gray-400">Total Warnings</div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }
