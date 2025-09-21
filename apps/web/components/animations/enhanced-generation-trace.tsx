@@ -19,7 +19,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
@@ -128,6 +128,7 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [showDetails, setShowDetails] = useState(true);
   const [adaptiveMode, setAdaptiveMode] = useState<'full' | 'minimal' | 'fallback'>('full');
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
 
   // Adaptive animation settings based on connection and user preferences
   const animationConfig = useMemo(() => {
@@ -165,6 +166,16 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
       setAdaptiveMode('full');
     }
   }, [prefersReducedMotion, connectionQuality, isSlowConnection]);
+
+  // Track generation start time and reset progress
+  useEffect(() => {
+    if (isGenerating && !generationStartTime) {
+      setGenerationStartTime(Date.now());
+      setMarketProgress({}); // Reset all market progress
+    } else if (!isGenerating) {
+      setGenerationStartTime(null);
+    }
+  }, [isGenerating, generationStartTime]);
 
   // Calculate estimated time based on selected markets and connection quality
   useEffect(() => {
@@ -219,20 +230,35 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
     }
   }, [isGenerating, generationProgress]);
 
-  // Optimized market-specific progress simulation with connection awareness
+  // Staggered market-specific progress simulation with delays between markets
   const updateMarketProgress = useCallback(() => {
+    if (!generationStartTime) return;
+
     setMarketProgress(prev => {
       const newProgress = { ...prev };
-      const progressIncrement = isSlowConnection ? Math.random() * 8 : Math.random() * 15;
+      const baseProgressIncrement = isSlowConnection ? Math.random() * 8 : Math.random() * 15;
+      const elapsedTime = Date.now() - generationStartTime;
 
-      selectedMarkets.forEach(market => {
-        if (!newProgress[market] || newProgress[market] < 100) {
-          newProgress[market] = Math.min(100, (newProgress[market] || 0) + progressIncrement);
+      selectedMarkets.forEach((market, index) => {
+        // Calculate delay for each market (staggered start)
+        const marketDelay = index * 2000; // 2 second delay between markets
+        const marketElapsedTime = elapsedTime - marketDelay;
+
+        if (marketElapsedTime > 0) {
+          // Apply a slight randomization to the progress increment for more natural feel
+          const progressIncrement = baseProgressIncrement * (0.8 + Math.random() * 0.4);
+
+          if (!newProgress[market] || newProgress[market] < 100) {
+            newProgress[market] = Math.min(100, (newProgress[market] || 0) + progressIncrement);
+          }
+        } else {
+          // Market hasn't started yet, keep at 0
+          newProgress[market] = 0;
         }
       });
       return newProgress;
     });
-  }, [isSlowConnection, selectedMarkets]);
+  }, [isSlowConnection, selectedMarkets, generationStartTime]);
 
   useEffect(() => {
     if (isGenerating) {
@@ -465,23 +491,44 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
               Market-Specific Progress
             </h3>
             <div className="space-y-3">
-              {selectedMarkets.map(market => {
+              {selectedMarkets.map((market, index) => {
                 const marketInfo = MARKET_CONFIG[market as keyof typeof MARKET_CONFIG];
                 const progress = marketProgress[market] || 0;
                 const isComplete = progress >= 100;
+                const elapsedTime = generationStartTime ? Date.now() - generationStartTime : 0;
+                const marketDelay = index * 2000;
+                const hasStarted = elapsedTime > marketDelay;
+                const isWaiting = !hasStarted && isGenerating;
 
                 return (
                   <motion.div
                     key={market}
                     initial={animationConfig.enableComplexAnimations ? { opacity: 0, y: 10 } : { opacity: 0 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: animationConfig.duration }}
-                    className="space-y-2"
+                    transition={{
+                      duration: animationConfig.duration,
+                      delay: animationConfig.enableStaggering ? index * 0.1 : 0
+                    }}
+                    className={`space-y-2 transition-all duration-500 ${
+                      isWaiting ? 'opacity-50' : 'opacity-100'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-300">
-                        {marketInfo?.label || market}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-300">
+                          {marketInfo?.label || market}
+                        </span>
+                        {isWaiting && (
+                          <Badge variant="outline" className="text-xs text-yellow-400 border-yellow-400">
+                            Waiting {Math.ceil((marketDelay - elapsedTime) / 1000)}s
+                          </Badge>
+                        )}
+                        {hasStarted && !isComplete && progress > 0 && (
+                          <Badge variant="outline" className="text-xs text-blue-400 border-blue-400">
+                            Processing...
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">{Math.round(progress)}%</span>
                         {isComplete && <CheckCircle className="h-4 w-4 text-green-500" />}
@@ -489,7 +536,9 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
                     </div>
                     <Progress
                       value={progress}
-                      className="h-2 bg-gray-700"
+                      className={`h-2 bg-gray-700 transition-all duration-300 ${
+                        isWaiting ? 'opacity-50' : 'opacity-100'
+                      }`}
                     />
                   </motion.div>
                 );

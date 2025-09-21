@@ -9,6 +9,7 @@ import { CrisisAnalysisResults } from '@/components/crisis/crisis-analysis-resul
 import { VisualLabelModal } from '@/components/visual-label-modal';
 import AuthGuard from '@/components/AuthGuard';
 import UserHeader from '@/components/UserHeader';
+import { useAppStore } from '@/stores/app-store';
 
 
 interface Label {
@@ -94,6 +95,9 @@ export default function HomePage() {
   const [crisisData, setCrisisData] = useState<CrisisFormData | null>(null);
   const [crisisAnalysis, setCrisisAnalysis] = useState<CrisisAnalysis | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // App store methods for generation state
+  const { setGenerating, setProgress, setSelectedMarkets, generationProgress } = useAppStore();
 
   // Multi-select states
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
@@ -315,6 +319,21 @@ export default function HomePage() {
     setProductData(data);
     setCurrentStep('generating');
 
+    // Set up app store state for progress animation
+    setGenerating(true);
+    setProgress(0);
+    setSelectedMarkets(data.selectedMarkets || [data.primaryMarket || 'ES']);
+
+    // Simulate progress during generation
+    const progressInterval = setInterval(() => {
+      const currentProgress = generationProgress;
+      if (currentProgress >= 95) {
+        clearInterval(progressInterval);
+        return; // Keep at 95% until completion
+      }
+      setProgress(currentProgress + Math.random() * 10);
+    }, 500);
+
     try {
       // Debug: Log the nutrition data being sent
       console.log('=== PAGE HANDLER DEBUG ===');
@@ -387,13 +406,27 @@ export default function HomePage() {
       const allResults = await Promise.all(labelPromises);
       console.log(`Successfully generated ${allResults.length} labels for markets:`, allResults.map(r => r.market));
 
+      // Complete the progress
+      setProgress(100);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause to show completion
+
       // Refresh the labels list to show all new labels
       await loadExistingLabels();
+
+      // Clear generation state
+      setGenerating(false);
+      setProgress(0);
 
       // Move to the labels step to show all labels including the new ones
       setCurrentStep('labels');
     } catch (error) {
       console.error('Error generating labels:', error);
+
+      // Clear generation state on error
+      clearInterval(progressInterval);
+      setGenerating(false);
+      setProgress(0);
+
       // Handle error, maybe show an error message to the user
       setCurrentStep('form'); // Go back to form on error
     }

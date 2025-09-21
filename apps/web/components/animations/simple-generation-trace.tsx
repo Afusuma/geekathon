@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle, Globe, Shield, FileText, Wifi, WifiOff } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
@@ -22,6 +23,8 @@ export function SimpleGenerationTrace() {
   const { isGenerating, generationProgress, selectedMarkets } = useAppStore();
   const prefersReducedMotion = useReducedMotion();
   const isSlowConnection = useSimpleConnectionCheck();
+  const [marketProgress, setMarketProgress] = useState<Record<string, number>>({});
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
 
   // Adaptive animation settings
   const animationConfig = useMemo(() => {
@@ -36,6 +39,56 @@ export function SimpleGenerationTrace() {
       enableAnimations: true
     };
   }, [prefersReducedMotion, isSlowConnection]);
+
+  // Track generation start time and reset progress
+  useEffect(() => {
+    if (isGenerating && !generationStartTime) {
+      setGenerationStartTime(Date.now());
+      setMarketProgress({}); // Reset all market progress
+    } else if (!isGenerating) {
+      setGenerationStartTime(null);
+    }
+  }, [isGenerating, generationStartTime]);
+
+  // Staggered market-specific progress simulation with delays between markets
+  const updateMarketProgress = useCallback(() => {
+    if (!generationStartTime) return;
+
+    setMarketProgress(prev => {
+      const newProgress = { ...prev };
+      const baseProgressIncrement = isSlowConnection ? Math.random() * 8 : Math.random() * 15;
+      const elapsedTime = Date.now() - generationStartTime;
+
+      selectedMarkets.forEach((market, index) => {
+        // Calculate delay for each market (staggered start)
+        const marketDelay = index * 2000; // 2 second delay between markets
+        const marketElapsedTime = elapsedTime - marketDelay;
+
+        if (marketElapsedTime > 0) {
+          // Apply a slight randomization to the progress increment for more natural feel
+          const progressIncrement = baseProgressIncrement * (0.8 + Math.random() * 0.4);
+
+          if (!newProgress[market] || newProgress[market] < 100) {
+            newProgress[market] = Math.min(100, (newProgress[market] || 0) + progressIncrement);
+          }
+        } else {
+          // Market hasn't started yet, keep at 0
+          newProgress[market] = 0;
+        }
+      });
+      return newProgress;
+    });
+  }, [isSlowConnection, selectedMarkets, generationStartTime]);
+
+  useEffect(() => {
+    if (isGenerating) {
+      const intervalTime = isSlowConnection ? 800 : 500; // Slower updates for slow connections
+      const interval = setInterval(updateMarketProgress, intervalTime);
+      return () => clearInterval(interval);
+    } else {
+      setMarketProgress({});
+    }
+  }, [isGenerating, updateMarketProgress, isSlowConnection]);
 
   const generationSteps = [
     { id: 'analyze', label: 'Analyzing Product Data', icon: FileText },
@@ -179,29 +232,57 @@ export function SimpleGenerationTrace() {
             Market Progress
           </h3>
           <div className="space-y-3">
-            {selectedMarkets.map((market, index) => (
-              <motion.div
-                key={market}
-                initial={animationConfig.enableAnimations ? { opacity: 0, x: -20 } : { opacity: 0 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  duration: animationConfig.duration,
-                  delay: animationConfig.enableAnimations ? 0.7 + (index * 0.1) : 0
-                }}
-                className="flex items-center gap-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50"
-              >
-                <div className="w-24 text-sm text-gray-400 font-medium">{market}</div>
-                <div className="flex-1">
-                  <Progress value={generationProgress} className="h-2 bg-gray-700" />
-                </div>
-                <div className="w-12 text-sm text-gray-400 text-right font-mono">
-                  {Math.round(generationProgress)}%
-                </div>
-                {generationProgress >= 100 && (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                )}
-              </motion.div>
-            ))}
+            {selectedMarkets.map((market, index) => {
+              const progress = marketProgress[market] || 0;
+              const isComplete = progress >= 100;
+              const elapsedTime = generationStartTime ? Date.now() - generationStartTime : 0;
+              const marketDelay = index * 2000;
+              const hasStarted = elapsedTime > marketDelay;
+              const isWaiting = !hasStarted && isGenerating;
+
+              return (
+                <motion.div
+                  key={market}
+                  initial={animationConfig.enableAnimations ? { opacity: 0, x: -20 } : { opacity: 0 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    duration: animationConfig.duration,
+                    delay: animationConfig.enableAnimations ? 0.7 + (index * 0.1) : 0
+                  }}
+                  className={`flex items-center gap-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50 transition-all duration-500 ${
+                    isWaiting ? 'opacity-50' : 'opacity-100'
+                  }`}
+                >
+                  <div className="w-24 text-sm text-gray-400 font-medium flex items-center gap-2">
+                    {market}
+                    {isWaiting && (
+                      <Badge variant="outline" className="text-xs text-yellow-400 border-yellow-400 px-1 py-0">
+                        {Math.ceil((marketDelay - elapsedTime) / 1000)}s
+                      </Badge>
+                    )}
+                    {hasStarted && !isComplete && progress > 0 && (
+                      <Badge variant="outline" className="text-xs text-blue-400 border-blue-400 px-1 py-0">
+                        ...
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <Progress
+                      value={progress}
+                      className={`h-2 bg-gray-700 transition-all duration-300 ${
+                        isWaiting ? 'opacity-50' : 'opacity-100'
+                      }`}
+                    />
+                  </div>
+                  <div className="w-12 text-sm text-gray-400 text-right font-mono">
+                    {Math.round(progress)}%
+                  </div>
+                  {isComplete && (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}
