@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, Shield, Users, Clock, FileText, Globe, CheckCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CrisisAnalysis {
   crisisType: string;
@@ -60,6 +61,14 @@ export function CrisisAnalysisResults({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex justify-end">
+        <button
+          onClick={onGenerateNew}
+          className="px-3 py-1.5 text-sm border border-red-600 text-red-600 hover:bg-red-600 hover:text-white rounded-md transition-colors"
+        >
+          New Crisis Report
+        </button>
+      </div>
       {/* Header */}
       <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
@@ -73,17 +82,12 @@ export function CrisisAnalysisResults({
           <div className="flex gap-3">
             <button
               onClick={onExportReport}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 text-sm border border-red-600 text-red-600 hover:bg-red-600 hover:text-white rounded-md transition-colors flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
-              Export Report
+              Export
             </button>
-            <button
-              onClick={onGenerateNew}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-            >
-              New Crisis Report
-            </button>
+           
           </div>
         </div>
 
@@ -179,41 +183,62 @@ export function CrisisAnalysisResults({
           <Globe className="h-6 w-6 text-blue-400" />
           <h3 className="text-xl font-semibold text-blue-400">Communication Plan</h3>
         </div>
-        
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Press Release */}
-          <div>
-            <h4 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
+
+        <Tabs defaultValue="press-release" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-gray-700/50">
+            <TabsTrigger
+              value="press-release"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white flex items-center gap-2"
+            >
               <FileText className="h-4 w-4" />
               Press Release
-            </h4>
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-300 leading-relaxed">{analysis.analysis.communicationPlan.pressRelease}</p>
-            </div>
-          </div>
-
-          {/* Customer Notice */}
-          <div>
-            <h4 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
+            </TabsTrigger>
+            <TabsTrigger
+              value="customer-notice"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white flex items-center gap-2"
+            >
               <Users className="h-4 w-4" />
               Customer Notice
-            </h4>
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-300 leading-relaxed">{analysis.analysis.communicationPlan.customerNotice}</p>
-            </div>
-          </div>
-
-          {/* Regulatory Notice */}
-          <div>
-            <h4 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
+            </TabsTrigger>
+            <TabsTrigger
+              value="regulatory-notice"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white flex items-center gap-2"
+            >
               <Shield className="h-4 w-4" />
               Regulatory Notice
-            </h4>
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-300 leading-relaxed">{analysis.analysis.communicationPlan.regulatoryNotice}</p>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="press-release" className="mt-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <h4 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-400" />
+                Public Press Release
+              </h4>
+              <p className="text-gray-300 leading-relaxed">{analysis.analysis.communicationPlan.pressRelease}</p>
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="customer-notice" className="mt-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <h4 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-400" />
+                Customer Safety Notice
+              </h4>
+              <p className="text-gray-300 leading-relaxed">{analysis.analysis.communicationPlan.customerNotice}</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="regulatory-notice" className="mt-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <h4 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-400" />
+                Regulatory Compliance Notice
+              </h4>
+              <p className="text-gray-300 leading-relaxed">{analysis.analysis.communicationPlan.regulatoryNotice}</p>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Legal Compliance */}
@@ -225,8 +250,11 @@ export function CrisisAnalysisResults({
         
         <div className="grid md:grid-cols-3 gap-6">
           {/* Requirements */}
-          <div>
-            <h4 className="text-lg font-medium text-white mb-3">Compliance Requirements</h4>
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-purple-400" />
+              Compliance Requirements
+            </h4>
             <ul className="space-y-2">
               {analysis.analysis.legalCompliance.requirements.map((requirement, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
@@ -238,8 +266,11 @@ export function CrisisAnalysisResults({
           </div>
 
           {/* Deadlines */}
-          <div>
-            <h4 className="text-lg font-medium text-white mb-3">Critical Deadlines</h4>
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-purple-400" />
+              Critical Deadlines
+            </h4>
             <ul className="space-y-2">
               {analysis.analysis.legalCompliance.deadlines.map((deadline, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
@@ -251,8 +282,11 @@ export function CrisisAnalysisResults({
           </div>
 
           {/* Contacts */}
-          <div>
-            <h4 className="text-lg font-medium text-white mb-3">Key Contacts</h4>
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
+              <Users className="h-5 w-5 text-purple-400" />
+              Key Contacts
+            </h4>
             <ul className="space-y-2">
               {analysis.analysis.legalCompliance.contacts.map((contact, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
@@ -271,8 +305,8 @@ export function CrisisAnalysisResults({
         <p className="text-gray-300 leading-relaxed mb-4">{analysis.description}</p>
         
         <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-medium text-gray-300 mb-2">Affected Products</h4>
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-300 mb-3">Affected Products</h4>
             <div className="flex flex-wrap gap-2">
               {analysis.affectedProducts.map((product, index) => (
                 <span key={index} className="px-3 py-1 bg-red-600/20 text-red-300 rounded-full text-sm">
@@ -281,8 +315,8 @@ export function CrisisAnalysisResults({
               ))}
             </div>
           </div>
-          <div>
-            <h4 className="font-medium text-gray-300 mb-2">Timeline</h4>
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-300 mb-3">Timeline</h4>
             <p className="text-gray-400 text-sm">{analysis.timeline}</p>
           </div>
         </div>
