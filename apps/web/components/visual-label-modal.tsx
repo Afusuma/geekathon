@@ -286,7 +286,7 @@ export function VisualLabelModal({ isOpen, onClose, labelData }: VisualLabelModa
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            🎨 Label Preview
+            Preview
           </h2>
           <button
             onClick={onClose}
@@ -302,8 +302,7 @@ export function VisualLabelModal({ isOpen, onClose, labelData }: VisualLabelModa
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Preview */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Preview</h3>
+            <div className="space-y-4">              
               <div className="bg-white border-2 border-black p-6 font-mono text-sm max-w-md mx-auto">
                 <h2 className="text-xl font-bold text-center mb-4 text-black">{productName}</h2>
                 
@@ -345,8 +344,6 @@ export function VisualLabelModal({ isOpen, onClose, labelData }: VisualLabelModa
 
             {/* Export Options */}
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-white">Export Options</h3>
-              
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -386,10 +383,7 @@ export function VisualLabelModal({ isOpen, onClose, labelData }: VisualLabelModa
                   </div>
                 </div>
 
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h4 className="text-white font-medium mb-2">
-                    {exportFormat === 'pdf' ? '📄 PDF Export' : exportFormat === 'png' ? '🎨 PNG Export with AI' : '📋 JSON Export'}
-                  </h4>
+                <div className="bg-gray-700 p-4 rounded-lg">                 
                   <p className="text-gray-300 text-sm">
                     {exportFormat === 'pdf' 
                       ? 'Generates a simple PDF with label data for printing.'
