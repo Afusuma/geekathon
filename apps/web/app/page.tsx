@@ -1003,7 +1003,7 @@ export default function HomePage() {
                                     // Language codes as fallback
                                     'ZH': '🇨🇳'
                                   };
-                                  const market = label.market || label.targetMarket || label.region || 'UK';
+                                  const market = label.market || 'UK';
                                   return flagMap[market] || '🇬🇧';
                                 })()}
                               </span>
