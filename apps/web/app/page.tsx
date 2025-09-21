@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { EnhancedProductForm } from '@/components/forms/enhanced-product-form';
-import { SimpleGenerationTrace } from '@/components/animations/simple-generation-trace';
+import { EnhancedGenerationTrace } from '@/components/animations/enhanced-generation-trace';
 import { EnhancedComparisonLayout } from '@/components/comparison/enhanced-comparison-layout';
 import { CrisisResponseForm } from '@/components/forms/crisis-response-form';
 import { CrisisAnalysisResults } from '@/components/crisis/crisis-analysis-results';
@@ -847,7 +847,7 @@ export default function HomePage() {
 
             {currentStep === 'generating' && (
               <div className="max-w-4xl mx-auto">
-                <SimpleGenerationTrace />
+                <EnhancedGenerationTrace />
               </div>
             )}
 
