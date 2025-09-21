@@ -86,14 +86,6 @@ export function NutritionInput({ nutrition = {
               type="button"
               variant="outline"
               size="sm"
-              onClick={fillSampleData}
-            >
-              Sample Data
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
               onClick={resetToZero}
             >
               Reset

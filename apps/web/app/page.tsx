@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { EnhancedProductForm } from '@/components/forms/enhanced-product-form';
-import { SimpleGenerationTrace } from '@/components/animations/simple-generation-trace';
+import { EnhancedGenerationTrace } from '@/components/animations/enhanced-generation-trace';
 import { EnhancedComparisonLayout } from '@/components/comparison/enhanced-comparison-layout';
 import { CrisisResponseForm } from '@/components/forms/crisis-response-form';
 import { CrisisAnalysisResults } from '@/components/crisis/crisis-analysis-results';
 import { VisualLabelModal } from '@/components/visual-label-modal';
 import AuthGuard from '@/components/AuthGuard';
 import UserHeader from '@/components/UserHeader';
+import { useAppStore } from '@/stores/app-store';
 
 
 interface Label {
@@ -94,6 +95,9 @@ export default function HomePage() {
   const [crisisData, setCrisisData] = useState<CrisisFormData | null>(null);
   const [crisisAnalysis, setCrisisAnalysis] = useState<CrisisAnalysis | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // App store methods for generation state
+  const { setGenerating, setProgress, setSelectedMarkets, generationProgress } = useAppStore();
 
   // Multi-select states
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
@@ -314,14 +318,33 @@ export default function HomePage() {
   const handleFormSubmit = async (data: any) => {
     setProductData(data);
     setCurrentStep('generating');
-    
+
+    // Set up app store state for progress animation
+    setGenerating(true);
+    setProgress(0);
+    setSelectedMarkets(data.selectedMarkets || [data.primaryMarket || 'ES']);
+
+    // Simulate progress during generation
+    const progressInterval = setInterval(() => {
+      const currentProgress = generationProgress;
+      if (currentProgress >= 95) {
+        clearInterval(progressInterval);
+        return; // Keep at 95% until completion
+      }
+      setProgress(currentProgress + Math.random() * 10);
+    }, 500);
+
     try {
       // Debug: Log the nutrition data being sent
+      console.log('=== PAGE HANDLER DEBUG ===');
       console.log('Form data received:', data);
-      console.log('Nutrition data being sent:', data.nutrition);
-      console.log('Ingredients data:', data.ingredients);
-      console.log('Market data:', data.market);
-      
+      console.log('data.selectedMarkets:', data.selectedMarkets);
+      console.log('data.primaryMarket:', data.primaryMarket);
+      console.log('data.market (fallback):', data.market);
+      console.log('typeof data.selectedMarkets:', typeof data.selectedMarkets);
+      console.log('Array.isArray(data.selectedMarkets):', Array.isArray(data.selectedMarkets));
+      console.log('=== END PAGE DEBUG ===');
+
       // Map market codes to backend expected values
       const marketMapping: Record<string, string> = {
         'US': 'usa',
@@ -332,10 +355,17 @@ export default function HomePage() {
         'MO': 'macau',
         'AE': 'halal'
       };
-      
-      const mappedMarket = marketMapping[data.market] || 'spain';
-      
-      const payload = {
+
+      // Get all selected markets from the app store - fallback to primary market if none selected
+      const { selectedMarkets, primaryMarket } = data;
+      const marketsToGenerate = selectedMarkets && selectedMarkets.length > 0
+        ? selectedMarkets
+        : (primaryMarket ? [primaryMarket] : ['ES']); // Default to Spain if nothing selected
+
+      console.log('Markets to generate labels for:', marketsToGenerate);
+
+      // Create base payload template
+      const basePayload = {
         name: data.name || 'Product',
         serving_size: data.nutrition?.energy?.per100g ? `${data.nutrition.energy.per100g.value}${data.nutrition.energy.per100g.unit}` : '1 serving',
         servings_per_container: '1',
@@ -343,39 +373,60 @@ export default function HomePage() {
         total_fat: data.nutrition?.fat?.per100g?.value?.toString() || '0',
         protein: data.nutrition?.protein?.per100g?.value?.toString() || '0',
         ingredients: Array.isArray(data.ingredients) ? data.ingredients.join(', ') : (data.ingredients || 'Ingredients not specified'),
-        market: mappedMarket
       };
-      
-      console.log('Full payload being sent to API:', payload);
-      
-      // Call the actual API to generate the label
-      const response = await fetch('https://2b5m23neo4.execute-api.us-east-1.amazonaws.com/Prod/api/labels/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+
+      // Generate labels for all selected markets in parallel
+      const labelPromises = marketsToGenerate.map(async (market: string) => {
+        const mappedMarket = marketMapping[market] || 'spain';
+        const payload = {
+          ...basePayload,
+          market: mappedMarket
+        };
+
+        console.log(`Generating label for market ${market} (${mappedMarket}):`, payload);
+
+        const response = await fetch('https://2b5m23neo4.execute-api.us-east-1.amazonaws.com/Prod/api/labels/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error for market ${market}! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log(`Label generated successfully for market ${market}:`, result);
+        return { market, result };
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // Wait for all labels to be generated
+      const allResults = await Promise.all(labelPromises);
+      console.log(`Successfully generated ${allResults.length} labels for markets:`, allResults.map(r => r.market));
 
-      const result = await response.json();
-      console.log('Label generated successfully:', result);
-      
-      // The label is automatically saved to DynamoDB by the backend
-      if (result.success && result.data) {
-        console.log('Label generated and saved to DynamoDB:', result.data);
-        
-        // Refresh the labels list to show the new label
-        await loadExistingLabels();
-      }
-      
-      // Move to the labels step to show all labels including the new one
+      // Complete the progress
+      setProgress(100);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause to show completion
+
+      // Refresh the labels list to show all new labels
+      await loadExistingLabels();
+
+      // Clear generation state
+      setGenerating(false);
+      setProgress(0);
+
+      // Move to the labels step to show all labels including the new ones
       setCurrentStep('labels');
     } catch (error) {
-      console.error('Error generating label:', error);
+      console.error('Error generating labels:', error);
+
+      // Clear generation state on error
+      clearInterval(progressInterval);
+      setGenerating(false);
+      setProgress(0);
+
       // Handle error, maybe show an error message to the user
       setCurrentStep('form'); // Go back to form on error
     }
@@ -796,7 +847,7 @@ export default function HomePage() {
 
             {currentStep === 'generating' && (
               <div className="max-w-4xl mx-auto">
-                <SimpleGenerationTrace />
+                <EnhancedGenerationTrace />
               </div>
             )}
 

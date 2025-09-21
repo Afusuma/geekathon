@@ -21,8 +21,7 @@ export default function UserHeader() {
           </span>
         </div>
         <div className="text-left">
-          <p className="text-white text-sm font-medium">{user.username}</p>
-          <p className="text-gray-300 text-xs capitalize">{user.role}</p>
+          <p className="text-white text-sm font-medium">{user.username}</p>         
         </div>
         <svg 
           className={`w-4 h-4 text-gray-300 transition-transform ${showDropdown ? 'rotate-180' : ''}`} 
@@ -44,11 +43,7 @@ export default function UserHeader() {
           
           {/* Dropdown Menu */}
           <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-20">
-            <div className="py-2">
-              <div className="px-4 py-2 border-b border-gray-700">
-                <p className="text-white text-sm font-medium">{user.username}</p>
-                <p className="text-gray-400 text-xs capitalize">{user.role}</p>
-              </div>
+            <div className="py-2">          
               
               <button
                 onClick={() => {

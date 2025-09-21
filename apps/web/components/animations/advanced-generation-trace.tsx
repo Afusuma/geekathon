@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 
 interface AdvancedGenerationTraceProps {
   className?: string;
@@ -12,6 +14,8 @@ export function AdvancedGenerationTrace({ className }: AdvancedGenerationTracePr
   const isGenerating = useAppStore(state => state.isGenerating);
   const progress = useAppStore(state => state.generationProgress);
   const selectedMarkets = useAppStore(state => state.selectedMarkets);
+  const [marketProgress, setMarketProgress] = useState<Record<string, number>>({});
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
 
   if (!isGenerating) return null;
 
@@ -30,6 +34,55 @@ export function AdvancedGenerationTrace({ className }: AdvancedGenerationTracePr
     if (progress < 90) return "bg-blue-500";
     return "bg-green-500";
   };
+
+  // Track generation start time and reset progress
+  useEffect(() => {
+    if (isGenerating && !generationStartTime) {
+      setGenerationStartTime(Date.now());
+      setMarketProgress({}); // Reset all market progress
+    } else if (!isGenerating) {
+      setGenerationStartTime(null);
+    }
+  }, [isGenerating, generationStartTime]);
+
+  // Staggered market-specific progress simulation with delays between markets
+  const updateMarketProgress = useCallback(() => {
+    if (!generationStartTime) return;
+
+    setMarketProgress(prev => {
+      const newProgress = { ...prev };
+      const baseProgressIncrement = Math.random() * 12 + 3; // 3-15 increment
+      const elapsedTime = Date.now() - generationStartTime;
+
+      selectedMarkets.forEach((market, index) => {
+        // Calculate delay for each market (staggered start)
+        const marketDelay = index * 2000; // 2 second delay between markets
+        const marketElapsedTime = elapsedTime - marketDelay;
+
+        if (marketElapsedTime > 0) {
+          // Apply a slight randomization to the progress increment for more natural feel
+          const progressIncrement = baseProgressIncrement * (0.8 + Math.random() * 0.4);
+
+          if (!newProgress[market] || newProgress[market] < 100) {
+            newProgress[market] = Math.min(100, (newProgress[market] || 0) + progressIncrement);
+          }
+        } else {
+          // Market hasn't started yet, keep at 0
+          newProgress[market] = 0;
+        }
+      });
+      return newProgress;
+    });
+  }, [selectedMarkets, generationStartTime]);
+
+  useEffect(() => {
+    if (isGenerating) {
+      const interval = setInterval(updateMarketProgress, 500);
+      return () => clearInterval(interval);
+    } else {
+      setMarketProgress({});
+    }
+  }, [isGenerating, updateMarketProgress]);
 
   return (
     <Card className={`w-full ${className}`}>
@@ -69,34 +122,50 @@ export function AdvancedGenerationTrace({ className }: AdvancedGenerationTracePr
           <h4 className="font-semibold text-gray-700 dark:text-gray-300">Market Progress</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {selectedMarkets.map((market, index) => {
-              const marketProgress = Math.min(100, Math.max(0, (progress - (index * 20)) * 1.2));
-              const isCompleted = marketProgress >= 100;
-              const isActive = marketProgress > 0 && marketProgress < 100;
-              
+              const staggeredProgress = marketProgress[market] || 0;
+              const isCompleted = staggeredProgress >= 100;
+              const isActive = staggeredProgress > 0 && staggeredProgress < 100;
+              const elapsedTime = generationStartTime ? Date.now() - generationStartTime : 0;
+              const marketDelay = index * 2000;
+              const hasStarted = elapsedTime > marketDelay;
+              const isWaiting = !hasStarted && isGenerating;
+
               return (
                 <div
                   key={market}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    isCompleted 
-                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20' 
+                  className={`p-3 rounded-lg border-2 transition-all duration-500 ${
+                    isCompleted
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                       : isActive
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : isWaiting
+                      ? 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 opacity-60'
                       : 'border-gray-200 bg-gray-50 dark:bg-gray-800'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">{market}</span>
-                    <span className="text-xs text-gray-500">
-                      {isCompleted ? '✅' : isActive ? '🔄' : '⏳'}
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{market}</span>
+                      {isWaiting && (
+                        <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">
+                          {Math.ceil((marketDelay - elapsedTime) / 1000)}s
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs">
+                      {isCompleted ? '✅' : isActive ? '🔄' : isWaiting ? '⏳' : '⌛'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
+                    <div
                       className={`h-2 rounded-full transition-all duration-300 ${
-                        isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                        isCompleted ? 'bg-green-500' : isActive ? 'bg-blue-500' : 'bg-gray-400'
                       }`}
-                      style={{ width: `${Math.min(100, marketProgress)}%` }}
+                      style={{ width: `${Math.min(100, staggeredProgress)}%` }}
                     />
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 text-right">
+                    {Math.round(staggeredProgress)}%
                   </div>
                 </div>
               );
