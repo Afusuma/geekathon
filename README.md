@@ -8,9 +8,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Turborepo](https://img.shields.io/badge/Turborepo-Monorepo-EF4444?logo=turborepo&logoColor=white)](https://turbo.build/)
 
-🚀 **[Live Demo](https://smartlabel-ai.vercel.app/)** | 📱 **[Crisis Response Demo](https://smartlabel-ai.vercel.app/crisis)** | 📖 **[API Docs](./docs/api/)**
+🚀 **[Live Demo](https://d1uq3bwiciqpgb.cloudfront.net/)** | 📱 **
 
----
 
 ## 🎯 Problem
 
