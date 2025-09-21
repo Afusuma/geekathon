@@ -260,19 +260,6 @@ pnpm test:e2e
 - **📈 Auto-Scaling**: Dynamic capacity management for peak demand
 - **🔄 API Ecosystem**: Partner integrations and third-party extensions
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
-
-### 🛠️ Development Workflow
-
-1. **Fork & Clone**: Create your own fork of the repository
-2. **Branch**: Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Develop**: Make your changes following our coding standards
-4. **Test**: Ensure all tests pass (`pnpm test`)
-5. **Commit**: Use conventional commits (`feat: add amazing feature`)
-6. **Push**: Push to your fork (`git push origin feature/amazing-feature`)
-7. **PR**: Create a Pull Request with detailed description
 
 ### 📋 Code Standards
 
@@ -294,8 +281,7 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 ### 🍪 **Happy Path Demo**
 1. **Product**: Premium Organic Cookies with complex allergens
 2. **Markets**: EU + Brazil (show regulatory differences)
-3. **Features**: Side-by-side comparison, compliance scorecard
-4. **Highlight**: Real-time generation trace and market-specific adaptations
+3. **Highlight**: Real-time generation trace and market-specific adaptations
 
 ### 🚨 **Crisis Response Demo**
 1. **Scenario**: Salmonella contamination in exported products
@@ -309,25 +295,13 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 3. **Performance**: Sub-15 second generation with progress tracking
 4. **Crisis Readiness**: Emergency response capabilities
 
-## 🏆 Awards & Recognition
-
-- 🥇 **Geekathon 2025 Winner**: Smart Food Factories Challenge
-- 🌟 **BRAINR Innovation Award**: Best AI Application in Food Manufacturing
-- 📱 **Grupo Lusiaves Prize**: Most Practical Industry Solution
-- ☁️ **AWS Technical Excellence**: Best Use of Serverless Architecture
-
 ## 📞 Support & Contact
 
 - **🐛 Bug Reports**: [GitHub Issues](https://github.com/your-username/smartlabel-ai/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/your-username/smartlabel-ai/discussions)
-- **📧 Email**: [hello@smartlabel.ai](mailto:hello@smartlabel.ai)
-- **🌐 Website**: [smartlabel.ai](https://smartlabel.ai)
+- **📧 Email**: [fusuma@gmail.com](mailto:fusuma@gmail.com)
 
-## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 ## 🙏 Acknowledgments
 
