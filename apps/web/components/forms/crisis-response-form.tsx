@@ -450,11 +450,7 @@ export function CrisisResponseForm({ onSubmit, isProcessing = false }: CrisisRes
               onChange={(e) => handleInputChange('additionalInfo', e.target.value)}
               placeholder="Any additional details, contact information, or special instructions..."
               className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-<<<<<<< HEAD
-              rows={8}
-=======
               rows={9}
->>>>>>> main
             />
           </div>
 
