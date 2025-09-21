@@ -236,21 +236,17 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
 
     setMarketProgress(prev => {
       const newProgress = { ...prev };
-      const baseProgressIncrement = isSlowConnection ? Math.random() * 8 : Math.random() * 15;
       const elapsedTime = Date.now() - generationStartTime;
 
       selectedMarkets.forEach((market, index) => {
         // Calculate delay for each market (staggered start)
-        const marketDelay = index * 2000; // 2 second delay between markets
+        const marketDelay = index * 1000; // 1 second delay between markets
         const marketElapsedTime = elapsedTime - marketDelay;
 
         if (marketElapsedTime > 0) {
-          // Apply a slight randomization to the progress increment for more natural feel
-          const progressIncrement = baseProgressIncrement * (0.8 + Math.random() * 0.4);
-
-          if (!newProgress[market] || newProgress[market] < 100) {
-            newProgress[market] = Math.min(100, (newProgress[market] || 0) + progressIncrement);
-          }
+          // Calculate progress based on elapsed time (complete in ~6 seconds per market)
+          const progressPercent = Math.min(100, (marketElapsedTime / 6000) * 100);
+          newProgress[market] = progressPercent;
         } else {
           // Market hasn't started yet, keep at 0
           newProgress[market] = 0;
@@ -258,17 +254,16 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
       });
       return newProgress;
     });
-  }, [isSlowConnection, selectedMarkets, generationStartTime]);
+  }, [selectedMarkets, generationStartTime]);
 
   useEffect(() => {
     if (isGenerating) {
-      const intervalTime = isSlowConnection ? 800 : 500; // Slower updates for slow connections
-      const interval = setInterval(updateMarketProgress, intervalTime);
+      const interval = setInterval(updateMarketProgress, 200);
       return () => clearInterval(interval);
     } else {
       setMarketProgress({});
     }
-  }, [isGenerating, updateMarketProgress, isSlowConnection]);
+  }, [isGenerating, updateMarketProgress]);
 
   if (!isGenerating && labels.length === 0) return null;
 
@@ -340,10 +335,12 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
             <span className="text-sm font-medium text-gray-300">Overall Progress</span>
             <span className="text-sm text-gray-400">{Math.round(generationProgress)}%</span>
           </div>
-          <Progress
-            value={generationProgress}
-            className="h-3 bg-gray-700"
-          />
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div
+              className="h-3 bg-blue-500 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${generationProgress}%` }}
+            />
+          </div>
         </div>
 
         {/* Current Step */}
@@ -383,10 +380,12 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
                   <span className="text-xs text-gray-400">Step Progress</span>
                   <span className="text-xs text-gray-400">{Math.round(stepProgress)}%</span>
                 </div>
-                <Progress
-                  value={stepProgress}
-                  className="h-2 bg-gray-600"
-                />
+                <div className="w-full bg-gray-600 rounded-full h-2">
+                  <div
+                    className="h-2 bg-blue-400 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${stepProgress}%` }}
+                  />
+                </div>
               </div>
             )}
           </motion.div>
@@ -534,12 +533,16 @@ export function EnhancedGenerationTrace({ className }: EnhancedGenerationTracePr
                         {isComplete && <CheckCircle className="h-4 w-4 text-green-500" />}
                       </div>
                     </div>
-                    <Progress
-                      value={progress}
-                      className={`h-2 bg-gray-700 transition-all duration-300 ${
-                        isWaiting ? 'opacity-50' : 'opacity-100'
-                      }`}
-                    />
+                    <div className={`w-full bg-gray-700 rounded-full h-2 transition-all duration-300 ${
+                      isWaiting ? 'opacity-50' : 'opacity-100'
+                    }`}>
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ease-out ${
+                          isComplete ? 'bg-green-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-400'
+                        }`}
+                        style={{ width: `${Math.min(100, progress)}%` }}
+                      />
+                    </div>
                   </motion.div>
                 );
               })}

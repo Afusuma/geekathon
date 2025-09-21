@@ -51,21 +51,17 @@ export function AdvancedGenerationTrace({ className }: AdvancedGenerationTracePr
 
     setMarketProgress(prev => {
       const newProgress = { ...prev };
-      const baseProgressIncrement = Math.random() * 12 + 3; // 3-15 increment
       const elapsedTime = Date.now() - generationStartTime;
 
       selectedMarkets.forEach((market, index) => {
         // Calculate delay for each market (staggered start)
-        const marketDelay = index * 2000; // 2 second delay between markets
+        const marketDelay = index * 1000; // 1 second delay between markets
         const marketElapsedTime = elapsedTime - marketDelay;
 
         if (marketElapsedTime > 0) {
-          // Apply a slight randomization to the progress increment for more natural feel
-          const progressIncrement = baseProgressIncrement * (0.8 + Math.random() * 0.4);
-
-          if (!newProgress[market] || newProgress[market] < 100) {
-            newProgress[market] = Math.min(100, (newProgress[market] || 0) + progressIncrement);
-          }
+          // Calculate progress based on elapsed time (complete in ~6 seconds per market)
+          const progressPercent = Math.min(100, (marketElapsedTime / 6000) * 100);
+          newProgress[market] = progressPercent;
         } else {
           // Market hasn't started yet, keep at 0
           newProgress[market] = 0;
@@ -77,7 +73,7 @@ export function AdvancedGenerationTrace({ className }: AdvancedGenerationTracePr
 
   useEffect(() => {
     if (isGenerating) {
-      const interval = setInterval(updateMarketProgress, 500);
+      const interval = setInterval(updateMarketProgress, 200);
       return () => clearInterval(interval);
     } else {
       setMarketProgress({});

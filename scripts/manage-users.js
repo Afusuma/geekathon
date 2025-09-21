@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Script para gerenciar usuários do SmartLabel AI
- * 
- * Uso:
+ * Script to manage SmartLabel AI users
+ *
+ * Usage:
  * node scripts/manage-users.js create <username> <email> <password> [role]
  * node scripts/manage-users.js list
  * node scripts/manage-users.js delete <username>
  * node scripts/manage-users.js update <username> <field> <value>
- * 
- * Exemplos:
+ *
+ * Examples:
  * node scripts/manage-users.js create admin admin@smartlabel.ai admin123 admin
  * node scripts/manage-users.js create user1 user1@example.com password123 user
  * node scripts/manage-users.js list
@@ -19,7 +19,7 @@
 
 const { DynamoDB } = require('aws-sdk');
 
-// Configuração do DynamoDB
+// DynamoDB configuration
 const dynamodb = new DynamoDB.DocumentClient({
   region: process.env.AWS_REGION || 'us-east-1'
 });
@@ -28,18 +28,18 @@ const USERS_TABLE = process.env.USERS_TABLE || 'SmartLabel-Users-dev';
 
 async function createUser(username, email, password, role = 'user') {
   try {
-    // Verificar se usuário já existe
+    // Check if user already exists
     const existingUser = await dynamodb.get({
       TableName: USERS_TABLE,
       Key: { username }
     }).promise();
 
     if (existingUser.Item) {
-      console.log(`❌ Usuário '${username}' já existe!`);
+      console.log(`❌ User '${username}' already exists!`);
       return;
     }
 
-    // Verificar se email já existe
+    // Check if email already exists
     const emailResult = await dynamodb.query({
       TableName: USERS_TABLE,
       IndexName: 'by-email',
@@ -50,15 +50,15 @@ async function createUser(username, email, password, role = 'user') {
     }).promise();
 
     if (emailResult.Items && emailResult.Items.length > 0) {
-      console.log(`❌ Email '${email}' já está em uso!`);
+      console.log(`❌ Email '${email}' is already in use!`);
       return;
     }
 
-    // Criar usuário
+    // Create user
     const user = {
       username,
       email,
-      password, // Em produção, hash a senha
+      password, // In production, hash the password
       role,
       createdAt: new Date().toISOString()
     };
@@ -68,12 +68,12 @@ async function createUser(username, email, password, role = 'user') {
       Item: user
     }).promise();
 
-    console.log(`✅ Usuário '${username}' criado com sucesso!`);
+    console.log(`✅ User '${username}' created successfully!`);
     console.log(`   Email: ${email}`);
     console.log(`   Role: ${role}`);
-    console.log(`   Criado em: ${user.createdAt}`);
+    console.log(`   Created at: ${user.createdAt}`);
   } catch (error) {
-    console.error('❌ Erro ao criar usuário:', error.message);
+    console.error('❌ Error creating user:', error.message);
   }
 }
 
@@ -85,38 +85,38 @@ async function listUsers() {
     }).promise();
 
     if (!result.Items || result.Items.length === 0) {
-      console.log('📝 Nenhum usuário encontrado.');
+      console.log('📝 No users found.');
       return;
     }
 
-    console.log(`📝 Lista de usuários (${result.Items.length} total):`);
+    console.log(`📝 User list (${result.Items.length} total):`);
     console.log('─'.repeat(80));
-    
+
     result.Items.forEach((user, index) => {
       console.log(`${index + 1}. ${user.username}`);
       console.log(`   Email: ${user.email}`);
       console.log(`   Role: ${user.role}`);
-      console.log(`   Criado: ${user.createdAt}`);
+      console.log(`   Created: ${user.createdAt}`);
       if (user.lastLogin) {
-        console.log(`   Último login: ${user.lastLogin}`);
+        console.log(`   Last login: ${user.lastLogin}`);
       }
       console.log('');
     });
   } catch (error) {
-    console.error('❌ Erro ao listar usuários:', error.message);
+    console.error('❌ Error listing users:', error.message);
   }
 }
 
 async function deleteUser(username) {
   try {
-    // Verificar se usuário existe
+    // Check if user exists
     const existingUser = await dynamodb.get({
       TableName: USERS_TABLE,
       Key: { username }
     }).promise();
 
     if (!existingUser.Item) {
-      console.log(`❌ Usuário '${username}' não encontrado!`);
+      console.log(`❌ User '${username}' not found!`);
       return;
     }
 
@@ -125,29 +125,29 @@ async function deleteUser(username) {
       Key: { username }
     }).promise();
 
-    console.log(`✅ Usuário '${username}' deletado com sucesso!`);
+    console.log(`✅ User '${username}' deleted successfully!`);
   } catch (error) {
-    console.error('❌ Erro ao deletar usuário:', error.message);
+    console.error('❌ Error deleting user:', error.message);
   }
 }
 
 async function updateUser(username, field, value) {
   try {
-    // Verificar se usuário existe
+    // Check if user exists
     const existingUser = await dynamodb.get({
       TableName: USERS_TABLE,
       Key: { username }
     }).promise();
 
     if (!existingUser.Item) {
-      console.log(`❌ Usuário '${username}' não encontrado!`);
+      console.log(`❌ User '${username}' not found!`);
       return;
     }
 
-    // Validar campo
+    // Validate field
     const allowedFields = ['email', 'password', 'role'];
     if (!allowedFields.includes(field)) {
-      console.log(`❌ Campo '${field}' não é válido. Campos permitidos: ${allowedFields.join(', ')}`);
+      console.log(`❌ Field '${field}' is not valid. Allowed fields: ${allowedFields.join(', ')}`);
       return;
     }
 
@@ -160,10 +160,10 @@ async function updateUser(username, field, value) {
       }
     }).promise();
 
-    console.log(`✅ Usuário '${username}' atualizado com sucesso!`);
+    console.log(`✅ User '${username}' updated successfully!`);
     console.log(`   ${field}: ${value}`);
   } catch (error) {
-    console.error('❌ Erro ao atualizar usuário:', error.message);
+    console.error('❌ Error updating user:', error.message);
   }
 }
 
@@ -173,27 +173,27 @@ async function main() {
 
   if (!command) {
     console.log(`
-🔐 SmartLabel AI - Gerenciador de Usuários
+🔐 SmartLabel AI - User Manager
 
-Uso:
-  node scripts/manage-users.js <comando> [argumentos]
+Usage:
+  node scripts/manage-users.js <command> [arguments]
 
-Comandos:
-  create <username> <email> <password> [role]  - Criar novo usuário
-  list                                        - Listar todos os usuários
-  delete <username>                           - Deletar usuário
-  update <username> <field> <value>           - Atualizar usuário
+Commands:
+  create <username> <email> <password> [role]  - Create new user
+  list                                        - List all users
+  delete <username>                           - Delete user
+  update <username> <field> <value>           - Update user
 
-Exemplos:
+Examples:
   node scripts/manage-users.js create admin admin@smartlabel.ai admin123 admin
   node scripts/manage-users.js create user1 user1@example.com password123 user
   node scripts/manage-users.js list
   node scripts/manage-users.js delete user1
   node scripts/manage-users.js update admin role superadmin
 
-Variáveis de ambiente:
-  AWS_REGION     - Região AWS (padrão: us-east-1)
-  USERS_TABLE    - Nome da tabela DynamoDB (padrão: SmartLabel-Users-dev)
+Environment variables:
+  AWS_REGION     - AWS region (default: us-east-1)
+  USERS_TABLE    - DynamoDB table name (default: SmartLabel-Users-dev)
     `);
     return;
   }
@@ -201,7 +201,7 @@ Variáveis de ambiente:
   switch (command) {
     case 'create':
       if (args.length < 4) {
-        console.log('❌ Uso: create <username> <email> <password> [role]');
+        console.log('❌ Usage: create <username> <email> <password> [role]');
         return;
       }
       await createUser(args[1], args[2], args[3], args[4] || 'user');
@@ -213,7 +213,7 @@ Variáveis de ambiente:
 
     case 'delete':
       if (args.length < 2) {
-        console.log('❌ Uso: delete <username>');
+        console.log('❌ Usage: delete <username>');
         return;
       }
       await deleteUser(args[1]);
@@ -221,19 +221,19 @@ Variáveis de ambiente:
 
     case 'update':
       if (args.length < 4) {
-        console.log('❌ Uso: update <username> <field> <value>');
+        console.log('❌ Usage: update <username> <field> <value>');
         return;
       }
       await updateUser(args[1], args[2], args[3]);
       break;
 
     default:
-      console.log(`❌ Comando '${command}' não reconhecido.`);
-      console.log('Comandos disponíveis: create, list, delete, update');
+      console.log(`❌ Command '${command}' not recognized.`);
+      console.log('Available commands: create, list, delete, update');
   }
 }
 
-// Executar se chamado diretamente
+// Execute if called directly
 if (require.main === module) {
   main().catch(console.error);
 }

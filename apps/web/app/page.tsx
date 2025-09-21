@@ -325,14 +325,17 @@ export default function HomePage() {
     setSelectedMarkets(data.selectedMarkets || [data.primaryMarket || 'ES']);
 
     // Simulate progress during generation
+    const startTime = Date.now();
     const progressInterval = setInterval(() => {
-      const currentProgress = generationProgress;
-      if (currentProgress >= 95) {
+      const elapsed = Date.now() - startTime;
+      const progressPercent = Math.min(95, (elapsed / 8000) * 100); // Complete in 8 seconds
+
+      if (progressPercent >= 95) {
         clearInterval(progressInterval);
         return; // Keep at 95% until completion
       }
-      setProgress(currentProgress + Math.random() * 10);
-    }, 500);
+      setProgress(progressPercent);
+    }, 200);
 
     try {
       // Debug: Log the nutrition data being sent
@@ -985,19 +988,49 @@ export default function HomePage() {
                             </div>
                           )}
                           <div>
-                            <h3 className="text-xl font-semibold text-white mb-1">
+                            <h3 className="text-xl font-semibold text-white mb-1 flex items-center gap-2">
+                              <span className="text-lg">
+                                {(() => {
+                                  const flagMap: Record<string, string> = {
+                                    // Short codes
+                                    'US': '🇺🇸',
+                                    'UK': '🇬🇧',
+                                    'ES': '🇪🇸',
+                                    'BR': '🇧🇷',
+                                    'AO': '🇦🇴',
+                                    'MO': '🇲🇴',
+                                    'AE': '🇦🇪',
+                                    // Full names
+                                    'United States': '🇺🇸',
+                                    'United Kingdom': '🇬🇧',
+                                    'España': '🇪🇸',
+                                    'Spain': '🇪🇸',
+                                    'Brasil': '🇧🇷',
+                                    'Brazil': '🇧🇷',
+                                    'Angola': '🇦🇴',
+                                    'Macau': '🇲🇴',
+                                    '澳門': '🇲🇴',
+                                    '澳门': '🇲🇴',
+                                    'الإمارات العربية المتحدة (حلال)': '🇦🇪',
+                                    'الإمارات العربية المتحدة': '🇦🇪',
+                                    'UAE': '🇦🇪',
+                                    // Language codes as fallback
+                                    'ZH': '🇨🇳'
+                                  };
+                                  const market = label.market || label.targetMarket || label.region || 'UK';
+                                  return flagMap[market] || '🇬🇧';
+                                })()}
+                              </span>
                               {label.productName || 'Unknown Product'}
                             </h3>
                             <div className="flex items-center gap-4 text-sm text-gray-400">
                               <span className="flex items-center gap-1">
-                                🌍 {label.market}
+                                {label.market}
                               </span>
                               <span className="flex items-center gap-1">
-                                📅 {label.createdAt ? new Date(label.createdAt).toLocaleString() : 'N/A'}
+                                |   {label.createdAt ? new Date(label.createdAt).toLocaleString() : 'N/A'}
                               </span>
-                              <span className="flex items-center gap-1">
-                                🏷️ {label.language?.toUpperCase() || 'EN'}
-                              </span>
+                              
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -1009,7 +1042,7 @@ export default function HomePage() {
                               }}
                               className="px-3 py-1 text-xs bg-slate-600 hover:bg-slate-700 text-white rounded transition-colors"
                             >
-                              Visual
+                              Show Label
                             </button>
                             <button
                               type="button"
@@ -1019,51 +1052,56 @@ export default function HomePage() {
                               }}
                               className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
                             >
-                              Delete
+                              🗑️
                             </button>
                           </div>
                         </div>
                         
-                        <div className="grid md:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <h4 className="font-medium text-gray-300 mb-2">Legal Label</h4>
-                            <p className="text-gray-400 mb-1">
-                              <strong>Ingredients:</strong> {label.ingredients || 'N/A'}
-                            </p>
-                            <p className="text-gray-400 mb-1">
-                              <strong>Allergens:</strong> {label.warnings?.join(', ') || 'None specified'}
-                            </p>
-                            <div className="text-gray-400">
-                              <strong>Nutrition:</strong>
-                              {label.nutrition_facts?.nutrients ? (
-                                <div className="ml-2 mt-1 space-y-1">
-                                  {label.nutrition_facts.nutrients.map((nutrient: any, index: number) => (
-                                    <div key={index} className="text-sm">
-                                      <span className="capitalize">{nutrient.name}:</span> {nutrient.amount} ({nutrient.daily_value})
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="ml-2">N/A</span>
-                              )}
+                        <details className="mt-4 bg-gray-900/80 rounded-lg p-3">
+                          <summary className="cursor-pointer text-gray-600 font-medium hover:text-gray-100 transition-colors">
+                            Details
+                          </summary>
+                          <div className="mt-4 grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <h4 className="font-medium text-gray-300 mb-2">Legal Label</h4>
+                              <p className="text-gray-400 mb-1">
+                                <strong>Ingredients:</strong> {label.ingredients || 'N/A'}
+                              </p>
+                              <p className="text-gray-400 mb-1">
+                                <strong>Allergens:</strong> {label.warnings?.join(', ') || 'None specified'}
+                              </p>
+                              <div className="text-gray-400">
+                                <strong>Nutrition:</strong>
+                                {label.nutrition_facts?.nutrients ? (
+                                  <div className="ml-2 mt-1 space-y-1">
+                                    {label.nutrition_facts.nutrients.map((nutrient: any, index: number) => (
+                                      <div key={index} className="text-sm">
+                                        <span className="capitalize">{nutrient.name}:</span> {nutrient.amount} ({nutrient.daily_value})
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="ml-2">N/A</span>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-300 mb-2">Product Details</h4>
+                              <p className="text-gray-400 mb-1">
+                                <strong>Market:</strong> {label.market || 'N/A'}
+                              </p>
+                              <p className="text-gray-400 mb-1">
+                                <strong>Serving Size:</strong> {label.servingSize || 'N/A'}
+                              </p>
+                              <p className="text-gray-400 mb-1">
+                                <strong>Servings Per Container:</strong> {label.servingsPerContainer || 'N/A'}
+                              </p>
+                              <p className="text-gray-400">
+                                <strong>Calories:</strong> {label.calories || 'N/A'}
+                              </p>
                             </div>
                           </div>
-                          <div>
-                            <h4 className="font-medium text-gray-300 mb-2">Product Details</h4>
-                            <p className="text-gray-400 mb-1">
-                              <strong>Market:</strong> {label.market || 'N/A'}
-                            </p>
-                            <p className="text-gray-400 mb-1">
-                              <strong>Serving Size:</strong> {label.servingSize || 'N/A'}
-                            </p>
-                            <p className="text-gray-400 mb-1">
-                              <strong>Servings Per Container:</strong> {label.servingsPerContainer || 'N/A'}
-                            </p>
-                            <p className="text-gray-400">
-                              <strong>Calories:</strong> {label.calories || 'N/A'}
-                            </p>
-                          </div>
-                        </div>
+                        </details>
                       </div>
                     ))}
                   </div>
