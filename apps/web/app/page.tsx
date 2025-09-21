@@ -6,6 +6,7 @@ import { EnhancedGenerationTrace } from '@/components/animations/enhanced-genera
 import { EnhancedComparisonLayout } from '@/components/comparison/enhanced-comparison-layout';
 import { CrisisResponseForm } from '@/components/forms/crisis-response-form';
 import { CrisisAnalysisResults } from '@/components/crisis/crisis-analysis-results';
+import { CrisisGenerationTrace } from '@/components/crisis/crisis-generation-trace';
 import { VisualLabelModal } from '@/components/visual-label-modal';
 import AuthGuard from '@/components/AuthGuard';
 import UserHeader from '@/components/UserHeader';
@@ -442,11 +443,14 @@ export default function HomePage() {
   const handleCrisisSubmit = async (data: CrisisFormData) => {
     setCrisisData(data);
     setCrisisStep('analyzing');
-    
+
     try {
       // Simulate crisis analysis (in a real app, this would call your crisis API)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
+      const analysisPromise = new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Wait for the analysis to complete
+      await analysisPromise;
+
       // Generate mock analysis based on the crisis data
       const analysis: CrisisAnalysis = {
         ...data,
@@ -810,23 +814,9 @@ export default function HomePage() {
             )}
             
             {crisisStep === 'analyzing' && (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-8">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-red-400 mx-auto mb-6"></div>
-                    <h2 className="text-2xl font-bold text-red-400 mb-4">Analyzing Crisis Situation</h2>
-              <p className="text-gray-300 mb-6">
-                      Our AI is analyzing the crisis data and generating a comprehensive response plan...
-                    </p>
-                    <div className="space-y-2 text-sm text-gray-400">
-                      <div>✓ Validating crisis data</div>
-                      <div>✓ Assessing risk levels</div>
-                      <div>⏳ Generating action plans</div>
-                      <div>⏳ Preparing communication strategies</div>
-                    </div>
-                  </div>
-            </div>
-          </div>
+              <div className="max-w-4xl mx-auto">
+                <CrisisGenerationTrace />
+              </div>
             )}
             
             {crisisStep === 'results' && crisisAnalysis && (
@@ -862,11 +852,7 @@ export default function HomePage() {
 
             {currentStep === 'labels' && (
               <div className="w-full">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="text-3xl font-bold text-white mb-2">Your Smart Labels</h2>
-                    <p className="text-gray-400">View and manage all your generated labels</p>
-                  </div>
+                <div className="flex items-center justify-end mb-8">
                   <div className="flex gap-3">
                     <button
                       type="button"
