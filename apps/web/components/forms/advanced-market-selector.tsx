@@ -168,6 +168,11 @@ export function AdvancedMarketSelector() {
   }, []);
 
   const handleMarketChange = useCallback((market: Market, isChecked: boolean) => {
+    console.log(`=== MARKET SELECTOR DEBUG ===`);
+    console.log(`Market: ${market}, isChecked: ${isChecked}`);
+    console.log(`Current selectedMarkets:`, selectedMarkets);
+    console.log(`Current primaryMarket:`, primaryMarket);
+
     let newSelectedMarkets: Market[];
     if (isChecked) {
       newSelectedMarkets = [...selectedMarkets, market];
@@ -188,6 +193,9 @@ export function AdvancedMarketSelector() {
     if (newSelectedMarkets.length === 0) {
       setPrimaryMarket(null);
     }
+
+    console.log(`New selectedMarkets:`, newSelectedMarkets);
+    console.log(`=== END MARKET SELECTOR DEBUG ===`);
   }, [selectedMarkets, primaryMarket, setSelectedMarkets, setPrimaryMarket]);
 
   const handlePrimaryMarketChange = useCallback((market: Market) => {

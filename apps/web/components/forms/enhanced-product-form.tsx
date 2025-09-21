@@ -223,17 +223,25 @@ export function EnhancedProductForm({ onSubmit, isGenerating }: EnhancedProductF
     // Ensure we have a primary market - if not, use the first selected market or default to US
     const marketToUse = primaryMarket || selectedMarkets[0] || 'US';
 
-    const dataToSend: ProductData = {
+    const dataToSend = {
       name: name.trim(),
       ingredients,
-      market: marketToUse as Market,
+      market: marketToUse as Market, // Keep for backwards compatibility
       nutrition,
+      selectedMarkets, // Include all selected markets
+      primaryMarket, // Include primary market
     };
 
-    console.log('EnhancedProductForm: Data being sent:', dataToSend);
-    console.log('EnhancedProductForm: Nutrition object:', nutrition);
+    console.log('=== ENHANCED PRODUCT FORM DEBUG ===');
+    console.log('selectedMarkets from store:', selectedMarkets);
+    console.log('primaryMarket from store:', primaryMarket);
+    console.log('marketToUse (fallback):', marketToUse);
+    console.log('Complete data being sent:', dataToSend);
+    console.log('selectedMarkets.length:', selectedMarkets.length);
+    console.log('selectedMarkets array:', JSON.stringify(selectedMarkets));
+    console.log('=== END DEBUG ===');
 
-    setProductData(dataToSend);
+    setProductData(dataToSend as ProductData);
     setHasUnsavedChanges(false);
     onSubmit(dataToSend);
   };

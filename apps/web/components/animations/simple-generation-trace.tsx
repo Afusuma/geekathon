@@ -39,9 +39,9 @@ export function SimpleGenerationTrace() {
 
   const generationSteps = [
     { id: 'analyze', label: 'Analyzing Product Data', icon: FileText },
-    { id: 'compliance', label: 'Checking Compliance Rules', icon: Shield },
+    { id: 'compliance', label: `Checking Compliance Rules for ${selectedMarkets.length || 1} market${selectedMarkets.length !== 1 ? 's' : ''}`, icon: Shield },
     { id: 'translate', label: 'Translating Content', icon: Globe },
-    { id: 'generate', label: 'Generating Labels', icon: CheckCircle },
+    { id: 'generate', label: `Generating Labels for ${selectedMarkets.length || 1} market${selectedMarkets.length !== 1 ? 's' : ''}`, icon: CheckCircle },
   ];
 
   // Performance indicator
