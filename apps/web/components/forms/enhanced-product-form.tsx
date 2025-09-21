@@ -275,7 +275,7 @@ export function EnhancedProductForm({ onSubmit, isGenerating }: EnhancedProductF
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="text-red-200">{error}</AlertDescription>
               </Alert>
-            ))}
+            ))} 
             {validation.warnings.map((warning, index) => (
               <Alert key={index} className="bg-yellow-900/20 border-yellow-500">
                 <Info className="h-4 w-4" />
@@ -295,14 +295,7 @@ export function EnhancedProductForm({ onSubmit, isGenerating }: EnhancedProductF
                 <Package className="h-5 w-5" />
                 Product Information
               </CardTitle>
-              <div className="flex items-center gap-2">
-                {hasUnsavedChanges && (
-                  <Badge variant="outline" className="text-yellow-400 border-yellow-400">
-                    <Save className="h-3 w-3 mr-1" />
-                    Unsaved Changes
-                  </Badge>
-                )}
-
+              <div className="flex items-center gap-2">                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -312,7 +305,7 @@ export function EnhancedProductForm({ onSubmit, isGenerating }: EnhancedProductF
                       disabled={isGenerating}
                     >
                       <Zap className="h-3 w-3 mr-1" />
-                      Example Data
+                      Demo AutoFill
                     </Button>
                   </DropdownMenuTrigger>
 
